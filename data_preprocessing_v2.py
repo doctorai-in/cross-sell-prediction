@@ -32,12 +32,10 @@ class Data_Preprocessing:
         columns.remove(key)
         print(" ")
         print("## :: " + data_type + " :: ##")
-        df = pd.get_dummies(df,prefix=columns, columns = columns, drop_first=True)
-        '''for col in columns:            
+        for col in columns:            
             print("CATEGORICAL COLUMN ENCODED :: ", col)
             df[col] = self.label_encoder.fit_transform(df[col])
-        df = self.onehot_encoder.fit_transform(df)
-        df'''
+        df = pd.get_dummies(df,prefix=columns, columns = columns)
             
 
     
@@ -110,7 +108,7 @@ class Data_Preprocessing:
             final_df                     = self.merge_df(categorical_df, numerical_df, key)
             X                            = self.drop_columns(final_df, drop_columns)
             Y                            = final_df[target_column]
-            return X, Y
+            return X, Y, final_df
         
         if data_type == 'Test':
             categorical_df, numerical_df = self._dataSplit_type(df, key)
