@@ -1,3 +1,4 @@
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import pandas as pd
@@ -5,6 +6,7 @@ from IPython.display import display
 class Data_Preprocessing:
    
     def __init__(self):
+        self.onehot_encoder = OneHotEncoder()
         self.label_encoder = LabelEncoder()
         self.values = None
     
@@ -21,7 +23,7 @@ class Data_Preprocessing:
         categorical_df[key]= df[key]
         return categorical_df, numerical_df
     
-    def label_encoding(self, categorical_df, key, data_type, custom_encode_col=None):
+    def onehot_encoding(self, categorical_df, key, data_type, custom_encode_col=None):
         '''
         categorical_df : Dataframe which contains only categorical columns
         '''
@@ -30,20 +32,15 @@ class Data_Preprocessing:
         columns.remove(key)
         print(" ")
         print("## :: " + data_type + " :: ##")
-        for col in columns:
-            '''if col == custom_encode_col :
-                if data_type=='Train':
-                    values = df[custom_encode_col].unique()
-                    print(values)
-                    self.values = values
-                map_dict = {value: i + 1 for i, value in enumerate(self.values)}
-                df[custom_encode_col] = df[custom_encode_col].map(map_dict)
-                print(df)
-            else:
-            '''
+        df = pd.get_dummies(df,prefix=columns, columns = columns, drop_first=True)
+        '''for col in columns:            
             print("CATEGORICAL COLUMN ENCODED :: ", col)
             df[col] = self.label_encoder.fit_transform(df[col])
-        
+        df = self.onehot_encoder.fit_transform(df)
+        df'''
+            
+
+    
         return df
     
     def drop_columns(self, df, columns):
@@ -84,7 +81,7 @@ class Data_Preprocessing:
         return pd.DataFrame((v2.T.dot(v1) - sums / n) / stds / n,
                             df2.columns, df1.columns)    
     
-    def data_processing_pipeline(self, df, drop_columns , label_column, key, data_type = 'Train', custom_encode_col=None):
+    def data_processing_pipeline(self, df, drop_columns , target_column, key, data_type = 'Train', custom_encode_col=None):
         '''
         df : Dataframe
         drop_columns : List of columns
@@ -100,7 +97,7 @@ class Data_Preprocessing:
         '''
         if data_type == 'Train':
             categorical_df, numerical_df = self._dataSplit_type(df, key)
-            categorical_df               = self.label_encoding(categorical_df, key, data_type, custom_encode_col)
+            categorical_df               = self.onehot_encoding(categorical_df, key, data_type, custom_encode_col)
             
             print("")
             print(":: Pandas correlation : Categorical VS Numerical :: ")
@@ -112,12 +109,12 @@ class Data_Preprocessing:
             
             final_df                     = self.merge_df(categorical_df, numerical_df, key)
             X                            = self.drop_columns(final_df, drop_columns)
-            Y                            = final_df[label_column]
+            Y                            = final_df[target_column]
             return X, Y
         
         if data_type == 'Test':
             categorical_df, numerical_df = self._dataSplit_type(df, key)
-            categorical_df               = self.label_encoding(categorical_df, key, data_type, custom_encode_col)
+            categorical_df               = self.onehot_encoding(categorical_df, key, data_type, custom_encode_col)
             
             print("")
             print(":: Pandas correlation : Categorical VS Numerical :: ")
@@ -141,3 +138,4 @@ class Data_Preprocessing:
             
         
     
+
