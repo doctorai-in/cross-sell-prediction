@@ -79,7 +79,7 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
                         verbose=100,eval_metric=['auc','logloss'],
                         early_stopping_rounds=50)
         
-        filename = 'models/' + model + '_Fold -{}-Simple-default-' +  datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + '.sav'
+        filename = 'models/' + model + "_" + split_type + '_Fold -{}-' +  datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + '.sav'
         filename = filename.format(i)
         pickle.dump(h,open(filename,'wb'))
 
@@ -124,6 +124,22 @@ def model_blending(xgboost, catboost, y_train):
 
 def plot_graph(x, y):
     plt.plot(x, y)
+    plt.show()
+
+def feature_importance(model, X_train):
+
+    fI = model.feature_importances_
+    
+    print(fI)
+    
+    names = X_train.columns.values
+    
+    ticks = [i for i in range(len(names))]
+    
+    plt.bar(ticks, fI)
+    
+    plt.xticks(ticks, names,rotation = 90)
+    
     plt.show()
         
         
