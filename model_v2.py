@@ -3,17 +3,22 @@ import datetime
 import pickle
 import xgboost as xgb
 from catboost import CatBoostClassifier
+import lightgbm as lgb
 from sklearn.model_selection import StratifiedShuffleSplit, KFold, StratifiedKFold
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
+import os
+from data_preprocessing_v2 import Data_Preprocessing
+
+data_processor = Data_Preprocessing()
 def model_and_split(n_splits,seed, test_size):
 
     split_types = {"kfold"                    : KFold(n_splits=n_splits, shuffle=False, random_state=seed),
                    "stratifiedsuffleSplit" : StratifiedShuffleSplit(n_splits=n_splits, test_size = test_size ,random_state=seed),
                    "stratifiedKFold"      : StratifiedKFold(n_splits=n_splits, shuffle=False, random_state=seed)
-                   }
+                  }
 
-    models = {"xgboost" : xgb.XGBClassifier(n_estimators=1000,
+    models = {    "xgboost" : xgb.XGBClassifier(n_estimators=1000,
                                                  max_depth=6,
                                                  learning_rate=0.04,
                                                  subsample=0.9,
@@ -32,7 +37,20 @@ def model_and_split(n_splits,seed, test_size):
                                                   random_state = 1,
                                                   subsample = 0.9,
                                                   rsm = 0.8
-                                                  )    
+                                                  ),
+                   "lgb" : lgb.LGBMClassifier(boosting_type='gbdt',
+                                              n_estimators=10000,
+                                              max_depth=10,
+                                              learning_rate=0.02,
+                                              subsample=0.9,
+                                              colsample_bytree=0.4,
+                                              objective ='binary',
+                                              random_state = 1,
+                                              importance_type='gain',
+                                              reg_alpha=2,
+                                              reg_lambda=2
+                                              #cat_features=cat_features
+                                             )                                    
                  }
     return split_types, models
 
@@ -58,6 +76,8 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
     print('#'*100)
     print("** "+ split_type + " **")
     print("** "+ model + " **")
+    save_model = "models/" + model + "/" + split_type + "/"
+    validate_dirs(save_model)
     split_types, models = model_and_split(n_splits,seed, test_size)
     spliter = split_types[split_type]
 
@@ -77,13 +97,18 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
             h = clf.fit(X_train_cv.iloc[idxT], y_train_cv.iloc[idxT],
                     eval_set=[(X_train_cv.iloc[idxV],y_train_cv.iloc[idxV])],
                    early_stopping_rounds=50,verbose = 100)
-        else:
+        elif model=='xgboost':
             h = clf.fit(X_train_cv.iloc[idxT], y_train_cv.iloc[idxT], 
                         eval_set=[(X_train_cv.iloc[idxV],y_train_cv.iloc[idxV])],
                         verbose=100,eval_metric=['auc','logloss'],
                         early_stopping_rounds=50)
+        elif model=='lgb':
+            h = clf.fit(X_train_cv.iloc[idxT], y_train_cv.iloc[idxT], 
+                    eval_set=[(X_train_cv.iloc[idxV],y_train_cv.iloc[idxV])],
+                    verbose=100,eval_metric=['binary_logloss','auc'],
+                    early_stopping_rounds=100)                
         
-        filename = 'models/' + model + "_" + split_type + '_Fold -{}-' +  datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + '.sav'
+        filename = save_model + model + "_" + split_type + '_Fold -{}-' +  datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + '.sav'
         filename = filename.format(i)
         pickle.dump(h,open(filename,'wb'))
 
@@ -101,8 +126,10 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
         
         if model=='catboost':
             avg_loss.append(clf.best_score_['validation']['Logloss'])
-        else:
+        elif model=='xgboost':
             avg_loss.append(clf.best_score)
+        elif model=='lgb':
+            avg_loss.append(clf.best_score_['valid_0']['binary_logloss'])    
 
 
         print('#'*100)
@@ -129,6 +156,9 @@ def model_blending(xgboost, catboost, y_train):
 
 def plot_graph(x, y):
     plt.plot(x, y)
+    plt.xlabel("Scores")
+    plt.ylabel("weights")
+    plt.title("roc_auc_score vs weights")
     plt.show()
 
 def feature_importance(model, X_train, model_name):
@@ -142,5 +172,44 @@ def feature_importance(model, X_train, model_name):
     plt.title(model_name)
     plt.xlabel("Features")
     plt.show()
-        
+
+def validate_dirs(dir):
+    try: 
+        if not os.path.exists(dir):
+            os.makedirs(dir)  
+    except OSError:
+        print('Error: Creating directory to store person')
+
+def model_inference(X, model_prefix, data_type, drop_columns, target_column, key,  prediction=None, predict_probs=None):
+    '''
+    X              : X is raw data
+    model_prefix   : model_path
+    data_type      : Train or Test
+    drop_columns   : list of columns
+    target_columns : label
+    key            : is used for merge dataframe
+    '''  
+    import pickle, joblib
+    import glob
+    assert data_type == "Train" or data_type=="Test", "data_type must : Train or Test " 
+
+    if data_type == "Train" :
+        X, Y = data_processor.data_processing_pipeline(
+            X, drop_columns , target_column, key, data_type = data_type) 
+    elif data_type == "Test" :
+        X = data_processor.data_processing_pipeline(
+            X, drop_columns , target_column, key, data_type = data_type) 
+
+    pridict = np.zeros(shape=(len(X),))
+    models_path = glob.glob(model_prefix)
+    for i, v in enumerate(models_path):
+        print(i)
+        model = joblib.load(v)
+        if prediction:
+            result = model.predict(X)
+        if predict_probs:
+            result = model.predict_proba(X)    
+        pridict += result
+    return pridict    
+
         
