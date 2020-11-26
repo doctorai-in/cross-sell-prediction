@@ -1,5 +1,6 @@
-results/
+result/
 models/
 __pycache__/
 catboost_info/
 .ipynb_checkpoints
+cm/
