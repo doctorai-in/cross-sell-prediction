@@ -66,8 +66,12 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
         print('Fold', i)
 
         print(' rows of train =',len(idxT),'rows of holdout =',len(idxV))
+        
 
         clf = models[model]
+
+        if i==0:
+            model_clf= clf
 
         if model=='catboost':
             h = clf.fit(X_train_cv.iloc[idxT], y_train_cv.iloc[idxT],
@@ -103,9 +107,10 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
 
         print('#'*100)
 
+
     print("Log Loss Stats {0:.8f},{1:.8f}".format(np.array(avg_loss).mean(), np.array(avg_loss).std()))
     
-    return probs, probs_oof_train
+    return probs, probs_oof_train, model_clf
 
 def model_blending(xgboost, catboost, y_train):
     scores = []
@@ -126,20 +131,16 @@ def plot_graph(x, y):
     plt.plot(x, y)
     plt.show()
 
-def feature_importance(model, X_train):
+def feature_importance(model, X_train, model_name):
 
     fI = model.feature_importances_
-    
     print(fI)
-    
     names = X_train.columns.values
-    
     ticks = [i for i in range(len(names))]
-    
     plt.bar(ticks, fI)
-    
     plt.xticks(ticks, names,rotation = 90)
-    
+    plt.title(model_name)
+    plt.xlabel("Features")
     plt.show()
         
         
