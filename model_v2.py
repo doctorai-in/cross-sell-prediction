@@ -108,9 +108,9 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
                     verbose=100,eval_metric=['binary_logloss','auc'],
                     early_stopping_rounds=100)                
         
-        filename = save_model + model + "_" + split_type + '_Fold -{}-' +  datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + '.sav'
-        filename = filename.format(i)
-        pickle.dump(h,open(filename,'wb'))
+        #filename = save_model + model + "_" + split_type + '_Fold_{}_' +  datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + '.sav'
+        #filename = filename.format(i)
+        #pickle.dump(h,open(filename,'wb'))
 
         probs_oof = clf.predict_proba(X_train_cv.iloc[idxV])[:,1]
         
