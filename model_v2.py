@@ -76,7 +76,7 @@ def model_fit(X, Y, X_test, n_splits, split_type, model):
     print('#'*100)
     print("** "+ split_type + " **")
     print("** "+ model + " **")
-    save_model = "models/" + model + "/" + split_type + "/"
+    save_model = r"models/" + model + "/" + split_type + "/"
     validate_dirs(save_model)
     split_types, models = model_and_split(n_splits,seed, test_size)
     spliter = split_types[split_type]
